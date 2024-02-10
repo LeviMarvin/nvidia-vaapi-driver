@@ -52,6 +52,7 @@ static bool direct_initExporter(NVDriver *drv) {
 
     //make sure we have a drm fd
     if (drv->drmFd == -1) {
+search_all_gpus:
         int nvdGpu = drv->cudaGpuId;
         if (nvdGpu == -1) {
             // The default GPU is the first one we find.
@@ -87,8 +88,11 @@ static bool direct_initExporter(NVDriver *drv) {
         drv->drmFd = fd;
         LOG("Found NVIDIA GPU %d at %s", nvdGpu, node);
     } else {
-        if (!isNvidiaDrmFd(drv->drmFd, true) || !checkModesetParameterFromFd(drv->drmFd)) {
-            return false;
+        //maybe there are many GPUs, so we need to find the NVIDIA GPU
+        if (!isNvidiaDrmFd(drv->drmFd, true)) {
+            if (!checkModesetParameterFromFd(drv->drmFd))
+                return false;
+            goto search_all_gpus;
         }
 
         //dup it so we can close it later and not effect firefox
